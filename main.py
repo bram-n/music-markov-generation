@@ -1,19 +1,14 @@
-from markov_generator import generate_markov_chain_melody_from_midi
+from markov_generator import raw_maestro_markov_generate_to_file
 
 if __name__ == "__main__":
     # Replace 'path/to/your/melody.mid' with the path to your MIDI file
-    midi_file_path = "./input_reference/reference.mid"
-
-    # Set the length of the generated melody
-    generated_length = 20
-
-    # Set the output folder and name
+    # midi_file_path = "maestro-v3.0.0/2004/MIDI-Unprocessed_SMF_02_R1_2004_01-05_ORIG_MID--AUDIO_02_R1_2004_06_Track06_wav.midi"
+    midi_file_path = "input_reference/Canon_in_D_easy.mid"
+    generated_length = 60
     output_folder = "./result_output"
-    output_name = "generated_melody"
+    output_name = "canon2"
 
-    # Generate a new melody using Markov Chain from MIDI
-    generated_melody = generate_markov_chain_melody_from_midi(midi_file_path, generated_length, output_folder, output_name)
-
+    result = raw_maestro_markov_generate_to_file(midi_file_path,generated_length, output_folder, output_name )
     # Print the generated melody
     print("Generated Melody:")
-    print(generated_melody)
+    print(result)
