@@ -1,41 +1,74 @@
 import random
 from music21 import *
 
-def generate_markov_chain_melody_from_midi(midi_file_path, length=20, output_folder=None, output_name=None):
-    # Load the MIDI file
-    score = converter.parse(midi_file_path)
+class MarkovChainMelodyGenerator:
+    """
+    A class for generating new melodies using a Markov Chain based on an input MIDI file.
+    Attributes:
+    - midi_file_path (str): Path to the input MIDI file.
+    - score (music21.stream.Score): The parsed score from the input MIDI file.
+    - melody_part (music21.stream.Part): The first part of the score, assumed to contain the melody.
+    - key_signature (music21.key.Key): The key signature of the melody.
+    - tonic_note (int): The MIDI note of the tonic in the key signature.
+    - melody_sequence (list): The MIDI note sequence extracted from the melody part.
 
-    # Extract the melody part (assuming the melody is in the top part)
-    melody_part = score.parts[0]
+    Methods:
+    - extract_melody_sequence(): Extracts the melody note sequence from the melody part.
+    - create_transition_matrix(): Creates a Markov Chain transition matrix from the melody sequence.
+    - generate_new_melody(length): Generates a new melody of the specified length using the transition matrix.
+    - save_generated_melody(generated_melody, output_folder, output_name): Saves the generated melody as a new MIDI file.
 
-    # Extract note pitches from the melody, skipping rests
-    melody_sequence = [note.pitch.midi for note in melody_part.flatten().notes if note.isNote]
+    Usage:
+    Example usage:
+    generator = MarkovChainMelodyGenerator("path/to/your/midi/file.mid")
+    generator.generate_markov_chain_melody(length=20, output_folder="output", output_name="generated_melody")
+    """
 
-    # Create a Markov Chain transition matrix
-    transition_matrix = {}
-    for i in range(len(melody_sequence) - 1):
-        current_note = melody_sequence[i]
-        next_note = melody_sequence[i + 1]
-        if current_note not in transition_matrix:
-            transition_matrix[current_note] = []
-        transition_matrix[current_note].append(next_note)
+    def __init__(self, midi_file_path):
+        self.score = converter.parse(midi_file_path)
+        self.melody_part = self.score.parts[0]
 
-    # Generate a new melody
-    generated_melody = [melody_sequence[0]]
-    current_note = melody_sequence[0]
 
-    for _ in range(length - 1):
-        # Select a random next note based on the transition matrix
-        if current_note in transition_matrix:
-            next_note = random.choice(transition_matrix[current_note])
-            generated_melody.append(next_note)
-            current_note = next_note
-        else:
-            # If the current note is not in the transition matrix, break the loop
-            break
+        key_analysis = self.melody_part.analyze('key')
+        self.key_signature = key_analysis
+        self.tonic_note = key_analysis.tonic.midi
+        self.melody_sequence = self.extract_melody_sequence()
 
-    # Output the generated melody as a new MIDI file
-    if output_folder is not None and output_name is not None:
+    def extract_melody_sequence(self):
+        return [note.pitch.midi for note in self.melody_part.flatten().notes if note.isNote]
+
+    def create_transition_matrix(self):
+        transition_matrix = {}
+        for i in range(len(self.melody_sequence) - 1):
+            current_note = self.melody_sequence[i]
+            next_note = self.melody_sequence[i + 1]
+            if current_note not in transition_matrix:
+                transition_matrix[current_note] = []
+            transition_matrix[current_note].append(next_note)
+        return transition_matrix
+
+
+
+    def generate_new_melody(self, length):
+        """Algorithm for generating the melody"""
+        transition_matrix = self.create_transition_matrix()
+        generated_melody = [self.tonic_note]  # Start with the tonic note
+        current_note = self.tonic_note
+
+        for _ in range(length - 1):
+            # Select a random next note based on the transition matrix
+            if current_note in transition_matrix:
+                next_note = random.choice(transition_matrix[current_note])
+                generated_melody.append(next_note)
+                current_note = next_note
+            else:
+                # If the current note is not in the transition matrix, break the loop
+                break
+
+        return generated_melody
+
+    def save_generated_melody(self, generated_melody, output_folder, output_name):
+        """Save the generated melody to a file location"""
         generated_melody_stream = stream.Part()
         for pitch_midi in generated_melody:
             if pitch_midi is not None:
@@ -47,4 +80,26 @@ def generate_markov_chain_melody_from_midi(midi_file_path, length=20, output_fol
         generated_melody_stream.write('midi', fp=output_midi_path)
         print(f"Generated melody saved as MIDI: {output_midi_path}")
 
-    return generated_melody
+    def generate_markov_chain_melody(self, length=20, output_folder="./result_output", output_name="generated_melody"):
+        """Main function. Generate a new melody and save it to a file location
+
+        Args:
+            length (int, optional): desired lenghth of the generated melody. Defaults to 20.
+            output_folder (_type_, optional): folder location you want to save your file. Defaults to None.
+            output_name (_type_, optional): name you want for the file. Defaults to None.
+
+        Returns:
+            list of midi note: the generated melody in
+        """
+        # Generate a new melody
+        generated_melody = self.generate_new_melody(length)
+
+        # Output the generated melody as a new MIDI file
+        if output_folder is not None and output_name is not None:
+            self.save_generated_melody(generated_melody, output_folder, output_name)
+
+        return generated_melody
+
+# Example usage:
+# generator = MarkovChainMelodyGenerator('path/to/your/midi/file.mid')
+# generated_melody = generator.generate_markov_chain_melody(length=20, output_folder='./output', output_name='generated_melody')

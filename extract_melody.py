@@ -2,6 +2,8 @@ import os
 from music21 import *
 
 def extract_melody_to_object(midi_file_path, output_folder=None, output_midi_filename=None):
+    
+
     # Load the MIDI file
     score = converter.parse(midi_file_path)
 
