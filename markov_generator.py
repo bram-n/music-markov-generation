@@ -27,15 +27,22 @@ class MarkovChainMelodyGenerator:
     def __init__(self, midi_file_path):
         self.score = converter.parse(midi_file_path)
         self.melody_part = self.score.parts[0]
-
-
+        # self.melody_part.getElementsByClass('Measure')[4]
         key_analysis = self.melody_part.analyze('key')
-        self.key_signature = key_analysis
+        self.key_signature = key_analysis 
         self.tonic_note = key_analysis.tonic.midi
         self.melody_sequence = self.extract_melody_sequence()
 
+    def get_tonic_length(self):
+        for note in self.melody_part.flatten().notes:
+            if note == self.tonic_note:
+                tonic_note_length = note.duration
+            else:
+                tonic_note_length = 1.0
+        return tonic_note_length
+    
     def extract_melody_sequence(self):
-        return [note.pitch.midi for note in self.melody_part.flatten().notes if note.isNote]
+        return [(note.pitch.midi, note.duration.quarterLength) for note in self.melody_part.flatten().notes if note.isNote]
 
     def create_transition_matrix(self):
         transition_matrix = {}
@@ -52,8 +59,8 @@ class MarkovChainMelodyGenerator:
     def generate_new_melody(self, length):
         """Algorithm for generating the melody"""
         transition_matrix = self.create_transition_matrix()
-        generated_melody = [self.tonic_note]  # Start with the tonic note
-        current_note = self.tonic_note
+        generated_melody = [(self.tonic_note, self.get_tonic_length())]  # Start with the tonic note
+        current_note = self.tonic_note, self.get_tonic_length()
 
         for _ in range(length - 1):
             # Select a random next note based on the transition matrix
@@ -61,20 +68,25 @@ class MarkovChainMelodyGenerator:
                 next_note = random.choice(transition_matrix[current_note])
                 generated_melody.append(next_note)
                 current_note = next_note
+                
             else:
                 # If the current note is not in the transition matrix, break the loop
                 break
-
         return generated_melody
 
     def save_generated_melody(self, generated_melody, output_folder, output_name):
         """Save the generated melody to a file location"""
         generated_melody_stream = stream.Part()
-        for pitch_midi in generated_melody:
+        print(generated_melody)
+        for note_midi in generated_melody:
+            pitch_midi, note_duration = note_midi
+            print("pitch_midi:", pitch_midi, "note_duration:", note_duration)
             if pitch_midi is not None:
                 note_obj = note.Note()
                 note_obj.pitch.midi = pitch_midi
+                note_obj.duration.quarterLength = note_duration
                 generated_melody_stream.append(note_obj)
+
 
         output_midi_path = f"{output_folder}/{output_name}.mid"
         generated_melody_stream.write('midi', fp=output_midi_path)
@@ -101,5 +113,5 @@ class MarkovChainMelodyGenerator:
         return generated_melody
 
 # Example usage:
-# generator = MarkovChainMelodyGenerator('path/to/your/midi/file.mid')
-# generated_melody = generator.generate_markov_chain_melody(length=20, output_folder='./output', output_name='generated_melody')
+generator = MarkovChainMelodyGenerator('/Users/bram/Desktop/Projects/music-markov-generation/input_reference/Meditation_from_Thais.mid')
+generated_melody = generator.generate_markov_chain_melody(length=20, output_folder='./result_output', output_name='generated_melody4')
