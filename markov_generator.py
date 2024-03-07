@@ -25,9 +25,8 @@ class MarkovChainMelodyGenerator:
     """
 
     def __init__(self, midi_file_path):
-        self.score = converter.parse(midi_file_path)
+        self.score = converter.parseFile(midi_file_path)
         self.melody_part = self.score.parts[0]
-        # self.melody_part.getElementsByClass('Measure')[4]
         key_analysis = self.melody_part.analyze('key')
         self.key_signature = key_analysis 
         self.tonic_note = key_analysis.tonic.midi
@@ -52,6 +51,7 @@ class MarkovChainMelodyGenerator:
             if current_note not in transition_matrix:
                 transition_matrix[current_note] = []
             transition_matrix[current_note].append(next_note)
+        print(transition_matrix)
         return transition_matrix
 
 
@@ -70,14 +70,14 @@ class MarkovChainMelodyGenerator:
                 current_note = next_note
                 
             else:
-                # If the current note is not in the transition matrix, break the loop
-                break
+                current_note = random.choice(list(transition_matrix.keys()))
+                generated_melody.append(current_note)
         return generated_melody
 
     def save_generated_melody(self, generated_melody, output_folder, output_name):
         """Save the generated melody to a file location"""
         generated_melody_stream = stream.Part()
-        print(generated_melody)
+        # print(generated_melody)
         for note_midi in generated_melody:
             pitch_midi, note_duration = note_midi
             print("pitch_midi:", pitch_midi, "note_duration:", note_duration)
@@ -112,6 +112,6 @@ class MarkovChainMelodyGenerator:
 
         return generated_melody
 
-# Example usage:
-generator = MarkovChainMelodyGenerator('/Users/bram/Desktop/Projects/music-markov-generation/input_reference/Meditation_from_Thais.mid')
-generated_melody = generator.generate_markov_chain_melody(length=20, output_folder='./result_output', output_name='generated_melody4')
+# # Example usage:
+# generator = MarkovChainMelodyGenerator('/Users/bram/Desktop/Projects/music-markov-generation/input_reference/Meditation_from_Thais.mid')
+# generated_melody = generator.generate_markov_chain_melody(length=20, output_folder='./result_output', output_name='generated_melody4')
