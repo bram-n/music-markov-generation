@@ -1,6 +1,6 @@
 # Markov Chain Melody Generator
 
-Generate musical melodies using Markov chains based on MIDI input. [Click this link for our research paper here.](https://docs.google.com/document/d/1RKI0W9kIX-AZDPpPakEP8RNtoMg6GRFpaORCP3BMfPY/edit#heading=h.qhyuc4jx3ewq)
+Generate musical melodies using Markov chains based on MIDI input. 
 
 ## Overview
 
