@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClefAI - AI Music Generation</title>
+    <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.7.1/build/opensheetmusicdisplay.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #6366F1;
+            --primary-dark: #4F46E5;
+            --success-color: #10B981;
+            --success-dark: #059669;
+            --background-color: #F8FAFC;
+            --border-color: #E2E8F0;
+            --text-color: #1E293B;
+            --text-secondary: #64748B;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.5;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .container {
+            display: grid;
+            gap: 2rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .settings-container {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .setting-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-weight: 500;
+            color: var(--text-color);
+        }
+
+        .measure-input, .instrument-select {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            min-width: 120px;
+            background: white;
+            transition: all 0.2s;
+        }
+
+        .measure-input:focus, .instrument-select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 1rem;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--primary-color);
+            background: rgba(79, 70, 229, 0.02);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--primary-color);
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        .play-btn {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .play-btn:hover {
+            background: var(--success-dark);
+            transform: translateY(-1px);
+        }
+
+        #download-btn {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        #download-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .result-container {
+            display: none;
+        }
+
+        #osmd-canvas {
+            min-height: 600px;
+            width: 100%;
+            margin: 1.5rem 0;
+            background: white;
+        }
+
+        .controls {
+            margin-bottom: 1.5rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--success-color);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+
+        #notification {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .success { background: #ECFDF5; color: #065F46; }
+        .error { background: #FEF2F2; color: #991B1B; }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 1rem;
+            }
+
+            .settings-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .setting-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
+
+        .logo {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .github-link {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .github-link:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            margin-top: 1rem;
+            overflow: hidden;
+            display: none;
+        }
+
+        .progress {
+            width: 0%;
+            height: 100%;
+            background: var(--success-color);
+            transition: width 0.1s linear;
+        }
+
+        .play-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-width: 120px;
+        }
+
+        .play-btn i {
+            font-size: 1.1em;
+        }
+
+        .tempo-control {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .tempo-slider {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--border-color);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .tempo-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tempo-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .tempo-value {
+            min-width: 60px;
+            text-align: right;
+            color: var(--text-secondary);
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .playback-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <a href="https://github.com/yourusername/clefai" class="github-link" target="_blank">
+        <i class="fab fa-github"></i>
+        View on GitHub
+    </a>
+
+    <div class="header">
+        <h1 class="logo">ClefAI</h1>
+        <p class="subtitle">Input a MIDI file and generate a similar melody</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <div class="settings-container">
+                <div class="input-group">
+                    <label for="measures">Number of measures</label>
+                    <input type="number" id="measures" min="1" max="100" value="8" class="measure-input">
+                </div>
+                <div class="input-group">
+                    <label for="instrument">Instrument</label>
+                    <select id="instrument" class="instrument-select">
+                        <option value="piano">Piano</option>
+                        <option value="violin">Violin</option>
+                        <option value="flute">Flute</option>
+                        <option value="guitar">Guitar</option>
+                        <option value="marimba">Marimba</option>
+                        <option value="synth">Synth</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="tempo-slider">Tempo (BPM)</label>
+                    <input type="range" class="tempo-slider" id="tempo-slider" min="50" max="200" value="120">
+                    <span class="tempo-value" id="tempo-value">120 BPM</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="upload-zone" id="drop-zone">
+                <input type="file" id="file-input" accept=".mid,.midi" style="display: none;">
+                <p>Drop your MIDI file here or click to browse</p>
+            </div>
+        </div>
+
+        <div id="notification"></div>
+
+        <div class="card result-container" id="result-container">
+            <div class="controls">
+                <div class="playback-controls">
+                <button class="button play-btn" id="play-btn">
+                    <i class="fas fa-play"></i>
+                    <span>Play</span>
+                </button>
+                    <button class="button play-btn" id="restart-btn">
+                        <i class="fas fa-redo"></i>
+                        <span>Restart</span>
+                    </button>
+                </div>
+                <div class="progress-bar" id="progress-bar">
+                    <div class="progress" id="progress"></div>
+                </div>
+            </div>
+            <div id="osmd-canvas"></div>
+            <button class="button" id="download-btn">
+                <i class="fas fa-download"></i>
+                Download Generated Melody
+            </button>
+        </div>
+    </div>
+
+    <div class="toast" id="download-toast">
+        <i class="fas fa-check-circle"></i>
+        Melody downloaded successfully!
+    </div>
+
+    <footer>
+        © 2024 ClefAI. All rights reserved.
+    </footer>
+
+    <script>
+        /**
+         * @typedef {Object} AudioState
+         * @property {Tone.Sampler|Tone.Synth} synth - The current synthesizer instance
+         * @property {boolean} isPlaying - Whether audio is currently playing
+         * @property {number} startTime - Start time of playback in milliseconds
+         * @property {number} pausedTime - Time position when playback was paused
+         * @property {Array<Object>} currentNotes - Array of MIDI note objects
+         * @property {number} totalDuration - Total duration of the current piece
+         */
+
+        /**
+         * Global state management
+         */
+        const State = {
+            audio: {
+                synth: null,
+                isPlaying: false,
+                startTime: 0,
+                pausedTime: 0,
+                currentNotes: [],
+                totalDuration: 0
+            },
+            currentDownloadFile: null,
+            osmd: null
+        };
+
+        /**
+         * DOM Elements
+         */
+        const Elements = {
+            dropZone: document.getElementById('drop-zone'),
+            fileInput: document.getElementById('file-input'),
+            notification: document.getElementById('notification'),
+            downloadBtn: document.getElementById('download-btn'),
+            osmdCanvas: document.getElementById('osmd-canvas'),
+            playBtn: document.getElementById('play-btn'),
+            restartBtn: document.getElementById('restart-btn'),
+            controls: document.querySelector('.controls'),
+            instrumentSelect: document.getElementById('instrument'),
+            downloadToast: document.getElementById('download-toast'),
+            tempoSlider: document.getElementById('tempo-slider'),
+            tempoValue: document.getElementById('tempo-value'),
+            progressBar: document.getElementById('progress-bar'),
+            progress: document.getElementById('progress'),
+            resultContainer: document.getElementById('result-container')
+        };
+
+        /**
+         * Constants for configuration
+         */
+        const CONFIG = {
+            SAMPLE_LIBRARIES: {
+                piano: {
+                    urls: {
+                        "A0": "A0.mp3",
+                        "C1": "C1.mp3",
+                        "D#1": "Ds1.mp3",
+                        "F#1": "Fs1.mp3",
+                        "A1": "A1.mp3",
+                        "C2": "C2.mp3",
+                        "D#2": "Ds2.mp3",
+                        "F#2": "Fs2.mp3",
+                        "A2": "A2.mp3",
+                        "C3": "C3.mp3",
+                        "D#3": "Ds3.mp3",
+                        "F#3": "Fs3.mp3",
+                        "A3": "A3.mp3",
+                        "C4": "C4.mp3",
+                        "D#4": "Ds4.mp3",
+                        "F#4": "Fs4.mp3",
+                        "A4": "A4.mp3"
+                    },
+                    baseUrl: "https://tonejs.github.io/audio/salamander/"
+                }
+            },
+            NOTIFICATION_DURATION: 3000,
+            DEFAULT_TEMPO: 120,
+            MIN_TEMPO: 50,
+            MAX_TEMPO: 200
+        };
+
+        /**
+         * Initialize the application
+         */
+        function initializeApp() {
+            // Initialize OpenSheetMusicDisplay
+            State.osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-canvas", {
+                autoResize: true,
+                drawTitle: true,
+                drawSubtitle: false,
+                drawComposer: false,
+                drawMetronomeMarks: true,
+                drawTimeSignatures: true,
+                drawLyrics: false,
+                drawFingerings: false,
+                drawMeasureNumbers: true,
+                drawPartNames: false
+            });
+
+            // Set up event listeners
+            setupEventListeners();
+        }
+
+        /**
+         * Set up all event listeners
+         */
+        function setupEventListeners() {
+            // File upload related events
+            Elements.dropZone.addEventListener('click', () => Elements.fileInput.click());
+            Elements.fileInput.addEventListener('change', handleFileSelect);
+            Elements.dropZone.addEventListener('drop', handleDrop);
+
+            // Drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                Elements.dropZone.addEventListener(eventName, preventDefaults);
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                Elements.dropZone.addEventListener(eventName, highlight);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                Elements.dropZone.addEventListener(eventName, unhighlight);
+            });
+
+            // Audio control events
+            Elements.instrumentSelect.addEventListener('change', handleInstrumentChange);
+            Elements.tempoSlider.addEventListener('input', handleTempoChange);
+        }
+
+        /**
+         * Clean up audio resources and reset state
+         */
+        function cleanupAudio() {
+            if (Tone.Transport.state !== 'stopped') {
+                Tone.Transport.stop();
+            }
+            Tone.Transport.cancel();
+            
+            if (State.audio.synth) {
+                State.audio.synth.dispose();
+                State.audio.synth = null;
+            }
+
+            State.audio.isPlaying = false;
+            State.audio.pausedTime = 0;
+            State.audio.currentNotes = [];
+            updatePlayButtonState(false);
+        }
+
+        /**
+         * Update play button UI based on playing state
+         * @param {boolean} isPlaying - Whether audio is currently playing
+         */
+        function updatePlayButtonState(isPlaying) {
+            Elements.playBtn.innerHTML = isPlaying ? 
+                '<i class="fas fa-pause"></i><span>Pause</span>' :
+                '<i class="fas fa-play"></i><span>Play</span>';
+        }
+
+        /**
+         * Show a notification message
+         * @param {string} message - The message to display
+         * @param {'success'|'error'|'info'} type - The type of notification
+         */
+        function showNotification(message, type) {
+            Elements.notification.textContent = message;
+            Elements.notification.style.display = 'block';
+            Elements.notification.className = type;
+            setTimeout(() => {
+                Elements.notification.style.display = 'none';
+            }, CONFIG.NOTIFICATION_DURATION);
+        }
+
+        /**
+         * Create a synthesizer based on selected instrument
+         * @param {string} instrumentType - The type of instrument to create
+         * @returns {Promise<Tone.Sampler|Tone.Synth>} The created synthesizer
+         */
+        async function createSynthesizer(instrumentType) {
+            switch(instrumentType) {
+                case 'piano':
+                    return new Promise((resolve) => {
+                        const sampler = new Tone.Sampler({
+                            urls: CONFIG.SAMPLE_LIBRARIES.piano.urls,
+                            baseUrl: CONFIG.SAMPLE_LIBRARIES.piano.baseUrl,
+                            onload: () => {
+                                console.log("Piano samples loaded");
+                                resolve(sampler);
+                            }
+                        }).toDestination();
+                    });
+                case 'violin':
+                    return new Tone.FMSynth({
+                        harmonicity: 3.01,
+                        modulationIndex: 14,
+                        oscillator: { type: "sine" },
+                        envelope: { attack: 0.2, decay: 0.3, sustain: 0.9, release: 1.2 }
+                    }).toDestination();
+                case 'flute':
+                    return new Tone.MonoSynth({
+                        oscillator: { type: "sine" },
+                        envelope: { attack: 0.1, decay: 0.1, sustain: 0.8, release: 0.4 }
+                    }).toDestination();
+                case 'guitar':
+                    return new Tone.PluckSynth().toDestination();
+                case 'marimba':
+                    return new Tone.MetalSynth().toDestination();
+                default:
+                    return new Tone.Synth().toDestination();
+            }
+        }
+
+        /**
+         * Handle file upload
+         * @param {File} file - The file to upload
+         */
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('measures', document.getElementById('measures').value);
+
+            try {
+                showNotification('Processing...', 'info');
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                showNotification('File processed successfully!', 'success');
+                Elements.resultContainer.style.display = 'block';
+                Elements.downloadBtn.style.display = 'inline-block';
+                Elements.controls.style.display = 'block';
+
+                // Set up download functionality
+                State.currentDownloadFile = data.download_file;
+                setupDownloadButton(data.download_file);
+
+                // Load and display music notation
+                const xmlResponse = await fetch(`/download/${data.xml_file}`);
+                const xml = await xmlResponse.text();
+                
+                Elements.osmdCanvas.style.display = 'block';
+                await State.osmd.load(xml);
+                State.osmd.render();
+                
+                await setupMIDIPlayback(data.download_file);
+            } catch (error) {
+                console.error('Error:', error);
+                showNotification(error.message || 'An error occurred while processing the file.', 'error');
+            }
+        }
+
+        /**
+         * Handle drag and drop events
+         * @param {DragEvent} e - The drag event
+         */
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        function highlight(e) {
+            Elements.dropZone.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            Elements.dropZone.classList.remove('dragover');
+        }
+
+        /**
+         * Handle file drop event
+         * @param {DragEvent} e - The drop event
+         */
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            handleFiles(dt.files);
+        }
+
+        /**
+         * Handle file selection from input
+         * @param {Event} e - The change event
+         */
+        function handleFileSelect(e) {
+            handleFiles(e.target.files);
+        }
+
+        /**
+         * Process uploaded files
+         * @param {FileList} files - The list of files to process
+         */
+        function handleFiles(files) {
+            if (files.length > 0) {
+                cleanupAudio();
+                uploadFile(files[0]);
+            }
+        }
+
+        /**
+         * Set up the download button functionality
+         * @param {string} filename - The name of the file to download
+         */
+        function setupDownloadButton(filename) {
+            Elements.downloadBtn.onclick = function() {
+                window.location.href = `/download/${filename}`;
+                Elements.downloadToast.style.display = 'block';
+                setTimeout(() => {
+                    Elements.downloadToast.style.display = 'none';
+                }, CONFIG.NOTIFICATION_DURATION);
+            };
+        }
+
+        /**
+         * Handle instrument change
+         */
+        async function handleInstrumentChange() {
+            if (State.audio.currentNotes.length > 0) {
+                cleanupAudio();
+                await setupMIDIPlayback(State.currentDownloadFile);
+            }
+        }
+
+        /**
+         * Handle tempo change
+         */
+        function handleTempoChange() {
+            const tempo = Elements.tempoSlider.value;
+            Elements.tempoValue.textContent = `${tempo} BPM`;
+            Tone.Transport.bpm.value = tempo;
+            
+            if (State.osmd) {
+                State.osmd.Sheet.FirstMeasure.TempoInBPM = parseInt(tempo);
+                State.osmd.render();
+            }
+        }
+
+        /**
+         * Set up MIDI playback functionality
+         * @param {string} midiFile - The name of the MIDI file to play
+         */
+        async function setupMIDIPlayback(midiFile) {
+            try {
+                // Create new synthesizer
+                State.audio.synth = await createSynthesizer(Elements.instrumentSelect.value);
+
+                // Load MIDI file
+                            const response = await fetch(`/download/${midiFile}`);
+                            const arrayBuffer = await response.arrayBuffer();
+                            const midi = new Midi(arrayBuffer);
+                const track = midi.tracks[0];
+                
+                // Update state
+                State.audio.currentNotes = track.notes;
+                State.audio.totalDuration = track.duration;
+                
+                // Set initial tempo
+                const tempo = midi.header.tempos[0]?.bpm || Elements.tempoSlider.value;
+                Tone.Transport.bpm.value = tempo;
+                Elements.tempoSlider.value = tempo;
+                Elements.tempoValue.textContent = `${tempo} BPM`;
+                
+                // Disable tempo control
+                Elements.tempoSlider.disabled = true;
+                Elements.tempoSlider.style.opacity = '0.5';
+                Elements.tempoValue.style.opacity = '0.5';
+
+                // Set up playback controls
+                setupPlaybackControls();
+            } catch (error) {
+                console.error('Error setting up MIDI playback:', error);
+                showNotification('Error setting up audio playback', 'error');
+            }
+        }
+
+        /**
+         * Set up playback control handlers
+         */
+        function setupPlaybackControls() {
+            // Reset transport and playback state
+            Tone.Transport.stop();
+            Tone.Transport.cancel();
+            State.audio.pausedTime = 0;
+            State.audio.isPlaying = false;
+            updatePlayButtonState(false);
+            Elements.progress.style.width = '0%';
+
+            // Set up restart button
+            Elements.restartBtn.onclick = function() {
+                Tone.Transport.stop();
+                Tone.Transport.seconds = 0;
+                State.audio.pausedTime = 0;
+                State.audio.isPlaying = false;
+                updatePlayButtonState(false);
+                Elements.progress.style.width = '0%';
+            };
+
+            // Set up play/pause button
+            Elements.playBtn.onclick = async function() {
+                if (!State.audio.isPlaying) {
+                    await Tone.start();
+                        Tone.Transport.cancel();
+                        
+                    State.audio.currentNotes.forEach(note => {
+                            Tone.Transport.schedule(time => {
+                            State.audio.synth.triggerAttackRelease(
+                                    note.name,
+                                    note.duration,
+                                    time,
+                                    note.velocity
+                                );
+                            }, note.time);
+                        });
+                        
+                    Elements.progressBar.style.display = 'block';
+                    if (State.audio.pausedTime > 0) {
+                        Tone.Transport.seconds = State.audio.pausedTime;
+                    }
+                    
+                    Tone.Transport.start();
+                    State.audio.startTime = Date.now() - (State.audio.pausedTime * 1000);
+                    State.audio.isPlaying = true;
+                    updatePlayButtonState(true);
+                    
+                    updateProgressBar();
+                } else {
+                    State.audio.pausedTime = Tone.Transport.seconds;
+                    Tone.Transport.pause();
+                    State.audio.isPlaying = false;
+                    updatePlayButtonState(false);
+                }
+            };
+
+            // Set up transport stop handler
+            Tone.Transport.on('stop', () => {
+                State.audio.isPlaying = false;
+                State.audio.pausedTime = 0;
+                updatePlayButtonState(false);
+                Elements.progress.style.width = '0%';
+            });
+        }
+
+        /**
+         * Update the progress bar during playback
+         */
+        function updateProgressBar() {
+            if (State.audio.isPlaying) {
+                const currentTime = Tone.Transport.seconds;
+                const percentage = (currentTime / State.audio.totalDuration) * 100;
+                Elements.progress.style.width = `${percentage}%`;
+                requestAnimationFrame(updateProgressBar);
+            }
+        }
+
+        // Initialize the application
+        window.onload = initializeApp;
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tonejs/midi"></script>
+</body>
+</html> 
