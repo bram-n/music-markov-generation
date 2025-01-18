@@ -1,4 +1,4 @@
-# Music Markov Generator
+# Clef AI Music Generator
 
 A web application that generates new melodies using Markov chains based on input MIDI files. Upload a MIDI file and get a new, unique melody generated using probabilistic transitions from the original piece.
 
