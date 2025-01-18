@@ -1,39 +1,19 @@
 from flask import Flask, render_template, request, send_file, jsonify
-import os
-from werkzeug.utils import secure_filename
+from pathlib import Path
 from markov_generator import MarkovChainMelodyGenerator
 import music21
-import time
-from pathlib import Path
+import os
 
 app = Flask(__name__)
 
-# Configure upload folder
-UPLOAD_FOLDER = 'uploads'
-RESULT_FOLDER = 'result_output'
-ALLOWED_EXTENSIONS = {'mid', 'midi'}
+# Configure paths
+UPLOAD_DIR = Path('uploads')
+OUTPUT_DIR = Path('output')
+ALLOWED_EXTENSIONS = {'.mid', '.midi'}
 
-# Create directories if they don't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULT_FOLDER, exist_ok=True)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['RESULT_FOLDER'] = RESULT_FOLDER
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def cleanup_old_files(directory, max_age_hours=24):
-    """Remove files older than max_age_hours from the specified directory"""
-    current_time = time.time()
-    for file_path in Path(directory).glob('*'):
-        if file_path.is_file():
-            file_age = current_time - file_path.stat().st_mtime
-            if file_age > (max_age_hours * 3600):
-                try:
-                    file_path.unlink()
-                except Exception as e:
-                    print(f"Error deleting {file_path}: {e}")
+# Create directories
+UPLOAD_DIR.mkdir(exist_ok=True)
+OUTPUT_DIR.mkdir(exist_ok=True)
 
 @app.route('/')
 def index():
@@ -41,64 +21,59 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    # Clean up old files before processing new ones
-    cleanup_old_files(app.config['UPLOAD_FOLDER'])
-    cleanup_old_files(app.config['RESULT_FOLDER'])
-    
     if 'file' not in request.files:
-        return jsonify({'error': 'No file part'}), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
-    
-    # Get the number of measures from the form data
-    measures = int(request.form.get('measures', 8))  # Default to 8 measures if not specified
-    
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
+        return jsonify({'error': 'No file uploaded'}), 400
         
-        # Generate new melody with specified length
-        generator = MarkovChainMelodyGenerator(filepath)
-        output_name = f"generated_{filename}"
-        generated_melody = generator.generate_markov_chain_melody(
-            length=measures,  # Use the specified number of measures
-            output_folder=app.config['RESULT_FOLDER'],
-            output_name=output_name.rsplit('.', 1)[0]
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'No file selected'}), 400
+        
+    if Path(file.filename).suffix.lower() not in ALLOWED_EXTENSIONS:
+        return jsonify({'error': 'Invalid file type'}), 400
+    
+    # Save uploaded file
+    filename = Path(file.filename).stem
+    upload_path = UPLOAD_DIR / file.filename
+    file.save(upload_path)
+    
+    try:
+        # Generate melody
+        measures = int(request.form.get('measures', 8))
+        generator = MarkovChainMelodyGenerator(upload_path)
+        generator.generate(
+            measures=measures,
+            output_dir=OUTPUT_DIR,
+            filename=f"generated_{filename}"
         )
         
-        # Convert MIDI to MusicXML for visualization
-        output_midi_path = os.path.join(app.config['RESULT_FOLDER'], f"{output_name.rsplit('.', 1)[0]}.mid")
-        score = music21.converter.parse(output_midi_path)
+        # Convert to MusicXML for visualization
+        midi_path = OUTPUT_DIR / f"generated_{filename}.mid"
+        score = music21.converter.parse(midi_path)
         
-        # Clean up the score - corrected version
+        # Clean up score
         for part in score.parts:
             part.partName = "Generated Melody"
-            # Remove instruments one by one
             for instrument in part.getElementsByClass('Instrument'):
                 part.remove(instrument)
-        
-        xml_path = os.path.join(app.config['RESULT_FOLDER'], f"{output_name.rsplit('.', 1)[0]}.xml")
+                
+        xml_path = OUTPUT_DIR / f"generated_{filename}.xml"
         score.write('musicxml', fp=xml_path)
         
         return jsonify({
-            'message': 'File processed successfully',
-            'download_file': f"{output_name.rsplit('.', 1)[0]}.mid",
-            'xml_file': f"{output_name.rsplit('.', 1)[0]}.xml"
+            'message': 'Melody generated successfully',
+            'midi_file': f"generated_{filename}.mid",
+            'xml_file': f"generated_{filename}.xml"
         })
-    
-    return jsonify({'error': 'Invalid file type'}), 400
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/download/<filename>')
 def download_file(filename):
     try:
-        return send_file(
-            os.path.join(app.config['RESULT_FOLDER'], filename),
-            as_attachment=True,
-            mimetype='audio/midi' if filename.endswith('.mid') else 'application/xml'
-        )
+        file_path = OUTPUT_DIR / filename
+        mime_type = 'audio/midi' if filename.endswith('.mid') else 'application/xml'
+        return send_file(file_path, as_attachment=True, mimetype=mime_type)
     except Exception as e:
         return jsonify({'error': str(e)}), 404
 

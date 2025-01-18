@@ -1,47 +1,66 @@
-# ClefAI - AI Music Generation
+# Music Markov Generator
 
-A web application that generates new melodies using Markov chains based on input MIDI files.
+A web application that generates new melodies using Markov chains based on input MIDI files. Upload a MIDI file and get a new, unique melody generated using probabilistic transitions from the original piece.
 
-## Deployment Instructions
+## Features
 
-1. Fork this repository to your GitHub account
-2. Sign up for a Netlify account if you haven't already
-3. Connect your GitHub repository to Netlify:
-   - Go to https://app.netlify.com
-   - Click "New site from Git"
-   - Choose GitHub and select your repository
-   - Configure build settings:
-     - Build command: `pip install -r requirements.txt`
-     - Publish directory: `.`
-4. Configure environment variables in Netlify:
-   - Go to Site settings > Build & deploy > Environment
-   - Add the following variables:
-     - `PYTHON_VERSION`: `3.9`
-     - `NODE_VERSION`: `18`
-     - `PYTHONPATH`: `/opt/buildhome/python3.9/lib/python3.9/site-packages`
+- Upload MIDI files to use as source material
+- Generate new melodies using Markov chain analysis
+- Download generated melodies as MIDI files
+- View generated melodies in MusicXML format
+- Customize the length of generated melodies
 
-## Development
+## Setup
 
-To run the project locally:
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/music-markov-generation.git
+cd music-markov-generation
+```
 
-1. Install dependencies:
+2. Create a virtual environment and activate it:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
-npm install -g netlify-cli
 ```
 
-2. Run the development server:
+## Running Locally
+
+1. Start the Flask server:
 ```bash
-netlify dev
+python app.py
 ```
 
-3. Open http://localhost:8888 ie your browser
+2. Open http://localhost:5000 in your browser
 
 ## Project Structure
 
-- `index.html`: Frontend web interface
-- `netlify/functions/`: Serverless functions
-  - `app.js`: Main function handling MIDI file processing
-  - `markov_generator.py`: Python module for melody generation
-- `requirements.txt`: Python dependencies
-- `netlify.toml`: Netlify configuration
+```
+.
+├── app.py              # Flask web server
+├── markov_generator.py # Markov chain melody generator
+├── templates/         
+│   └── index.html     # Web interface
+├── uploads/           # Temporary storage for uploaded MIDI files
+└── output/           # Generated melodies
+```
+
+## Usage
+
+1. Upload a MIDI file through the web interface
+2. Choose the number of measures to generate
+3. Click "Generate" to create a new melody
+4. Download the generated MIDI file or view the MusicXML score
+
+## Requirements
+
+- Python 3.8+
+- Flask
+- music21
+
+See `requirements.txt` for complete list of dependencies.
