@@ -1,0 +1,15 @@
+{
+  "name": "clefai",
+  "version": "1.0.0",
+  "description": "AI-powered melody generation using Markov chains",
+  "main": "index.js",
+  "scripts": {
+    "build": "pip install -r requirements.txt"
+  },
+  "dependencies": {
+    "@netlify/functions": "^2.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+} 

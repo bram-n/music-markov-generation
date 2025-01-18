@@ -30,6 +30,7 @@ class MarkovChainMelodyGenerator:
         key_analysis = self.melody_part.analyze('key')
         self.key_signature = key_analysis 
         self.tonic_note = key_analysis.tonic.midi
+        self.time_signature = self.melody_part.getTimeSignatures()[0]  # Get the time signature
         self.melody_sequence = self.extract_melody_sequence()
 
     def get_tonic_length(self):
@@ -51,7 +52,7 @@ class MarkovChainMelodyGenerator:
             if current_note not in transition_matrix:
                 transition_matrix[current_note] = []
             transition_matrix[current_note].append(next_note)
-        print(transition_matrix)
+        # print(transition_matrix)
         return transition_matrix
 
 
@@ -77,16 +78,17 @@ class MarkovChainMelodyGenerator:
     def save_generated_melody(self, generated_melody, output_folder, output_name):
         """Save the generated melody to a file location"""
         generated_melody_stream = stream.Part()
-        # print(generated_melody)
+        # Add time signature
+        generated_melody_stream.append(self.time_signature)
+        
+        # Add notes
         for note_midi in generated_melody:
             pitch_midi, note_duration = note_midi
-            print("pitch_midi:", pitch_midi, "note_duration:", note_duration)
             if pitch_midi is not None:
                 note_obj = note.Note()
                 note_obj.pitch.midi = pitch_midi
                 note_obj.duration.quarterLength = note_duration
                 generated_melody_stream.append(note_obj)
-
 
         output_midi_path = f"{output_folder}/{output_name}.mid"
         generated_melody_stream.write('midi', fp=output_midi_path)
@@ -96,15 +98,17 @@ class MarkovChainMelodyGenerator:
         """Main function. Generate a new melody and save it to a file location
 
         Args:
-            length (int, optional): desired lenghth of the generated melody. Defaults to 20.
-            output_folder (_type_, optional): folder location you want to save your file. Defaults to None.
-            output_name (_type_, optional): name you want for the file. Defaults to None.
+            measures (int): Number of measures to generate
+            output_folder (str): folder location you want to save your file
+            output_name (str): name you want for the file
 
         Returns:
-            list of midi note: the generated melody in
+            list of midi note: the generated melody
         """
+        # Calculate notes per measure based on time signature
+        beats_per_measure = self.time_signature.numerator
         # Generate a new melody
-        generated_melody = self.generate_new_melody(length)
+        generated_melody = self.generate_new_melody(length * beats_per_measure)
 
         # Output the generated melody as a new MIDI file
         if output_folder is not None and output_name is not None:
