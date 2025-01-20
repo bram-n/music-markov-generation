@@ -38,18 +38,6 @@ python app.py
 
 2. Open http://localhost:5000 in your browser
 
-## Project Structure
-
-```
-.
-├── app.py              # Flask web server
-├── markov_generator.py # Markov chain melody generator
-├── templates/         
-│   └── index.html     # Web interface
-├── uploads/           # Temporary storage for uploaded MIDI files
-└── output/           # Generated melodies
-```
-
 ## Usage
 
 1. Upload a MIDI file through the web interface
